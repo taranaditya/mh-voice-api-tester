@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MH Voice API Tester</title>
+  <style>
+    :root { --ink:#16263d; --muted:#637187; --line:#dbe3ee; --paper:#f6f8fb; --card:#fff; --accent:#117a8b; --accent-dark:#075b68; --good:#13795b; --warn:#a15a00; --bad:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--paper); }
+    header { background:linear-gradient(110deg,#102b4d,#0c6470); color:#fff; padding:28px max(22px,calc((100vw - 1220px)/2)); }
+    header h1 { margin:0 0 5px; font-size:28px; letter-spacing:.01em; }
+    header p { margin:0; color:#d8f4f4; max-width:850px; }
+    main { max-width:1220px; margin:24px auto 50px; padding:0 20px; }
+    .notice { border:1px solid #b7d6d8; background:#ebf8f8; border-radius:10px; padding:12px 14px; margin-bottom:18px; color:#174b52; }
+    .notice.warning { border-color:#ebc991; background:#fff7e8; color:#7a4706; }
+    .grid { display:grid; grid-template-columns:1.3fr .9fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(24,47,80,.04); }
+    .card h2 { margin:0 0 10px; font-size:19px; }
+    .card h3 { margin:16px 0 8px; font-size:16px; }
+    .subtitle { color:var(--muted); margin:0 0 16px; font-size:13px; }
+    label { display:block; font-weight:650; margin:10px 0 5px; }
+    textarea,input,select,button { font:inherit; }
+    textarea,input,select { width:100%; border:1px solid #bbc7d6; border-radius:7px; padding:9px 10px; background:#fff; color:var(--ink); }
+    textarea { min-height:95px; resize:vertical; }
+    .form-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .form-row.two { grid-template-columns:repeat(2,1fr); }
+    button,.button { border:0; border-radius:7px; background:var(--accent); color:#fff; padding:9px 13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
+    button:hover { background:var(--accent-dark); }
+    button.secondary,.button.secondary { background:#e7edf4; color:#263c57; }
+    button.danger { background:#a52c25; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:14px; align-items:center; }
+    details { border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+    summary { cursor:pointer; color:#38526e; font-weight:650; }
+    .metrics { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+    .metric { border:1px solid var(--line); border-radius:9px; padding:10px; background:#fcfdff; }
+    .metric .label { color:var(--muted); display:block; font-size:12px; }
+    .metric .value { font-size:18px; font-weight:750; }
+    pre { margin:0; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .response { min-height:220px; max-height:520px; overflow:auto; background:#102132; color:#ecf5f7; border-radius:9px; padding:14px; }
+    .status { margin:10px 0 0; min-height:22px; font-weight:600; }
+    .status.good { color:var(--good); } .status.warn { color:var(--warn); } .status.bad { color:var(--bad); }
+    .section { margin-top:18px; }
+    .scenario-note { margin:7px 0 0; color:var(--muted); font-size:13px; }
+    table { border-collapse:collapse; width:100%; font-size:13px; }
+    th,td { text-align:left; vertical-align:top; padding:8px; border-bottom:1px solid var(--line); }
+    th { color:#425973; font-size:12px; background:#f6f8fb; }
+    .scroll { overflow:auto; }
+    .tag { display:inline-block; padding:2px 7px; border-radius:99px; background:#e8f5f4; color:#075d5b; font-size:12px; font-weight:700; }
+    .explain { border-left:4px solid #5e86b0; padding:10px 12px; background:#f4f8fd; color:#36516d; margin:12px 0; font-size:13px; }
+    .result-block { border:1px solid var(--line); border-radius:8px; margin-top:10px; padding:11px; }
+    .result-block pre { max-height:180px; overflow:auto; background:#f7f9fc; padding:8px; border-radius:5px; margin-top:7px; }
+    .small { font-size:12px; color:var(--muted); }
+    @media (max-width:850px) { .grid { grid-template-columns:1fr; } .form-row,.form-row.two { grid-template-columns:1fr; } main { padding:0 12px; } header { padding:22px 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MH Voice API Tester</h1>
+    <p>Local-only dashboard for exercising the deployed Voice API, watching streamed output, measuring client-observable latency, and comparing session and language behaviour.</p>
+  </header>
+  <main>
+    <div id="configuration" class="notice">Checking local configuration...</div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Send a voice request</h2>
+        <p class="subtitle">Confirmed fields: query, session_id, source_lang, target_lang. Advanced fields are optional and only sent when you provide them.</p>
+        <label for="query">Query</label>
+        <textarea id="query" placeholder="Ask an agricultural question"></textarea>
+        <div class="form-row">
+          <div><label for="sourceLang">Source language</label><select id="sourceLang"><option value="hi">Hindi (hi)</option><option value="mr" selected>Marathi (mr)</option><option value="en">English (en)</option></select></div>
+          <div><label for="targetLang">Target language</label><select id="targetLang"><option value="hi">Hindi (hi)</option><option value="mr" selected>Marathi (mr)</option><option value="en">English (en)</option></select></div>
+          <div><label for="sessionId">Session ID</label><input id="sessionId" autocomplete="off" placeholder="Generate a safe test ID"></div>
+        </div>
+        <div class="actions"><button id="generateSession" class="secondary" type="button">Generate new test session</button></div>
+        <details>
+          <summary>Advanced confirmed optional fields</summary>
+          <div class="form-row two">
+            <div><label for="provider">Provider</label><select id="provider"><option value="">Not sent</option><option value="RAYA">RAYA</option><option value="RINGG">RINGG</option></select></div>
+            <div><label for="userId">User ID</label><input id="userId" autocomplete="off" placeholder="Optional - omit unless needed"></div>
+          </div>
+          <label for="processId">Process ID</label><input id="processId" autocomplete="off" placeholder="Optional - omit unless needed">
+        </details>
+        <div class="actions"><button id="send" type="button">Send and stream</button><button id="cancel" class="danger" type="button" disabled>Cancel local request</button></div>
+        <p id="requestStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <aside class="card">
+        <h2>Client-observable metrics</h2>
+        <p class="subtitle">These measure the API client path only. They do not include telephony, STT, TTS, or an internal backend breakdown.</p>
+        <div class="metrics">
+          <div class="metric"><span class="label">HTTP response</span><span id="httpTime" class="value">-</span></div>
+          <div class="metric"><span class="label">TTFT</span><span id="ttft" class="value">-</span></div>
+          <div class="metric"><span class="label">Total</span><span id="totalTime" class="value">-</span></div>
+          <div class="metric"><span class="label">Chunks</span><span id="chunks" class="value">-</span></div>
+          <div class="metric"><span class="label">Status</span><span id="httpStatus" class="value">-</span></div>
+          <div class="metric"><span class="label">Response length</span><span id="responseLength" class="value">-</span></div>
+        </div>
+        <div class="explain">TTFT means the time from this tester sending the request to receiving the first meaningful response text. It is not an internal LLM-only timing.</div>
+        <p id="languageObservation" class="small"></p>
+      </aside>
+    </div>
+
+    <section class="card section">
+      <h2>Live response</h2>
+      <p class="subtitle">Chunks appear as they arrive from the remote API. The tester understands standard SSE frames and raw text streams; it never simulates token streaming.</p>
+      <div class="response"><pre id="response" aria-live="polite"></pre></div>
+    </section>
+
+    <div class="grid section">
+      <section class="card">
+        <h2>Predefined observable scenarios</h2>
+        <p class="subtitle">Each scenario maps to a capability confirmed in the MH repository. It does not claim a specific internal tool ran for any one answer.</p>
+        <label for="scenario">Scenario</label>
+        <select id="scenario"></select>
+        <p id="scenarioDetail" class="scenario-note"></p>
+        <div class="actions"><button id="loadScenario" type="button">Load into request form</button><button id="runScenario" type="button">Run selected scenario</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Session / language comparison</h2>
+        <p class="subtitle">Reproduces the experiment: same session plus a target-language change, then the same target change in a new session.</p>
+        <label for="languageQuery">Query</label>
+        <textarea id="languageQuery">नासिक में मौसम कैसा है</textarea>
+        <div class="form-row two">
+          <div><label for="languageInitial">First target</label><select id="languageInitial"><option value="hi" selected>Hindi (hi)</option><option value="mr">Marathi (mr)</option><option value="en">English (en)</option></select></div>
+          <div><label for="languageChanged">Changed target</label><select id="languageChanged"><option value="en" selected>English (en)</option><option value="hi">Hindi (hi)</option><option value="mr">Marathi (mr)</option></select></div>
+        </div>
+        <div class="actions"><button id="runLanguage" type="button">Run comparison</button></div>
+        <div id="languageResults"></div>
+      </section>
+    </div>
+
+    <section class="card section">
+      <h2>Benchmark</h2>
+      <p class="subtitle">Runs are sequential and use a fresh generated test session each time, so conversation history does not distort timing.</p>
+      <div class="form-row">
+        <div><label for="benchmarkScenario">Scenario</label><select id="benchmarkScenario"></select></div>
+        <div><label for="benchmarkRuns">Runs</label><input id="benchmarkRuns" type="number" min="1" max="50" value="5"></div>
+        <div><label for="benchmarkDelay">Delay (seconds)</label><input id="benchmarkDelay" type="number" min="0" max="30" step="0.1" value="0.5"></div>
+      </div>
+      <div class="actions"><button id="runBenchmark" type="button">Run benchmark</button></div>
+      <div id="benchmarkResults" class="scroll"></div>
+    </section>
+
+    <section class="card section">
+      <h2>Local test history</h2>
+      <p class="subtitle">Stored in local SQLite. Session IDs are fingerprinted and redacted before persistence. Export files include only the redacted session label.</p>
+      <div class="actions"><button id="refreshHistory" class="secondary" type="button">Refresh history</button><a class="button secondary" href="/api/export.json">Export JSON</a><a class="button secondary" href="/api/export.csv">Export CSV</a></div>
+      <div class="scroll"><table><thead><tr><th>Time</th><th>Scenario</th><th>Languages</th><th>Session</th><th>TTFT</th><th>Total</th><th>Status</th><th>Chunks</th><th>Error</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let scenarios = [];
+    let activeController = null;
+
+    function seconds(value) { return value == null ? "-" : `${Number(value).toFixed(2)}s`; }
+    function setStatus(message, kind = "") { const element = $("requestStatus"); element.textContent = message; element.className = `status ${kind}`; }
+    function resetMetrics() {
+      $("httpTime").textContent = "-"; $("ttft").textContent = "-"; $("totalTime").textContent = "-";
+      $("chunks").textContent = "-"; $("httpStatus").textContent = "-"; $("responseLength").textContent = "-";
+      $("languageObservation").textContent = "";
+    }
+    function renderMetrics(metrics) {
+      $("httpTime").textContent = seconds(metrics.http_response_seconds);
+      $("ttft").textContent = seconds(metrics.ttft_seconds);
+      $("totalTime").textContent = seconds(metrics.total_seconds);
+      $("chunks").textContent = metrics.chunk_count ?? "-";
+      $("httpStatus").textContent = metrics.status_code ?? "-";
+      $("responseLength").textContent = metrics.response_characters ?? "-";
+    }
+    function setRunning(running) { $("send").disabled = running; $("cancel").disabled = !running; $("runScenario").disabled = running; }
+    function randomSession() { return `tester-${crypto.randomUUID()}`; }
+    function clean(value) { return value && value.trim ? value.trim() : value; }
+    function requestPayload() {
+      const payload = {
+        query: clean($("query").value), session_id: clean($("sessionId").value),
+        source_lang: $("sourceLang").value, target_lang: $("targetLang").value,
+        user_id: clean($("userId").value), provider: $("provider").value || null,
+        process_id: clean($("processId").value), scenario: null,
+      };
+      for (const key of Object.keys(payload)) if (payload[key] === "" || payload[key] == null) delete payload[key];
+      return payload;
+    }
+    function handleLocalEvent(name, payload) {
+      if (name === "meta") { if (payload.session_id) $("sessionId").value = payload.session_id; setStatus("Connected to local tester. Waiting for upstream data..."); }
+      if (name === "upstream") { renderMetrics(payload.metrics); setStatus("Upstream response headers received."); }
+      if (name === "chunk") { $("response").textContent += payload.text; $("response").parentElement.scrollTop = $("response").parentElement.scrollHeight; }
+      if (name === "error") { setStatus(`${payload.code}: ${payload.message}`, "bad"); }
+      if (name === "complete") {
+        renderMetrics(payload.metrics);
+        const language = payload.language_observation || {};
+        $("languageObservation").textContent = language.label ? `Response script observation: ${language.label}. Assessment: ${language.assessment}.` : "";
+        setStatus(payload.success ? "Request complete and saved locally." : "Request ended with an error and was saved locally.", payload.success ? "good" : "warn");
+        refreshHistory();
+      }
+    }
+    async function streamRequest(payload) {
+      if (!payload.query) { setStatus("Enter a query first.", "bad"); return; }
+      resetMetrics(); $("response").textContent = ""; setRunning(true); setStatus("Starting local stream...");
+      activeController = new AbortController();
+      try {
+        const response = await fetch("/api/stream", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload), signal:activeController.signal });
+        if (!response.ok || !response.body) throw new Error(`Local tester returned HTTP ${response.status}`);
+        const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+        while (true) {
+          const {value, done} = await reader.read();
+          buffer += decoder.decode(value || new Uint8Array(), {stream:!done}).replace(/\r\n/g, "\n");
+          let split;
+          while ((split = buffer.indexOf("\n\n")) !== -1) {
+            const frame = buffer.slice(0, split); buffer = buffer.slice(split + 2);
+            let eventName = "message"; const dataLines = [];
+            for (const line of frame.split("\n")) { if (line.startsWith("event:")) eventName = line.slice(6).trim(); if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart()); }
+            if (dataLines.length) handleLocalEvent(eventName, JSON.parse(dataLines.join("\n")));
+          }
+          if (done) break;
+        }
+      } catch (error) {
+        setStatus(error.name === "AbortError" ? "Local request cancelled." : `Local tester error: ${error.message}`, "bad");
+      } finally { activeController = null; setRunning(false); }
+    }
+    function populateScenarios() {
+      for (const select of [$("scenario"), $("benchmarkScenario")]) {
+        select.replaceChildren();
+        for (const scenario of scenarios) { const option = document.createElement("option"); option.value = scenario.id; option.textContent = scenario.name; select.append(option); }
+      }
+      showScenarioDetail();
+    }
+    function currentScenario() { return scenarios.find((scenario) => scenario.id === $("scenario").value); }
+    function showScenarioDetail() { const scenario = currentScenario(); $("scenarioDetail").textContent = scenario ? `Confirmed capability: ${scenario.confirmed_capability} ${scenario.note}` : ""; }
+    function loadScenario() {
+      const scenario = currentScenario(); if (!scenario) return;
+      $("query").value = scenario.query; $("sourceLang").value = scenario.source_lang; $("targetLang").value = scenario.target_lang; $("sessionId").value = randomSession();
+      setStatus(`Loaded ${scenario.name} with a fresh test session.`, "good");
+    }
+    function runSelectedScenario() { loadScenario(); const payload = requestPayload(); payload.scenario = currentScenario().id; streamRequest(payload); }
+    async function runLanguageTest() {
+      const button = $("runLanguage"); button.disabled = true; $("languageResults").replaceChildren();
+      try {
+        const response = await fetch("/api/language-test", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ query:clean($("languageQuery").value), source_lang:"hi", initial_target_lang:$("languageInitial").value, changed_target_lang:$("languageChanged").value }) });
+        const data = await response.json(); if (!response.ok) throw new Error(data.detail || "Language test failed");
+        const intro = document.createElement("p"); intro.className = "small"; intro.textContent = `${data.method} Sessions: ${data.session_a_label} versus ${data.session_b_label}.`; $("languageResults").append(intro);
+        for (const run of data.runs) {
+          const block = document.createElement("div"); block.className = "result-block";
+          const heading = document.createElement("strong"); heading.textContent = `${run.label} - target ${run.target_lang} - HTTP ${run.status_code ?? "-"}`; block.append(heading);
+          const observation = document.createElement("p"); observation.className = "small"; observation.textContent = `${run.language_observation.label}; assessment: ${run.language_observation.assessment}; TTFT ${seconds(run.metrics.ttft_seconds)}, total ${seconds(run.metrics.total_seconds)}.`; block.append(observation);
+          if (run.error_message) { const error = document.createElement("p"); error.className="status bad"; error.textContent = run.error_message; block.append(error); }
+          const text = document.createElement("pre"); text.textContent = run.response || "(No response text)"; block.append(text); $("languageResults").append(block);
+        }
+        refreshHistory();
+      } catch (error) { const message = document.createElement("p"); message.className="status bad"; message.textContent=error.message; $("languageResults").append(message); }
+      finally { button.disabled = false; }
+    }
+    function statCell(value) { return value == null ? "-" : `${Number(value).toFixed(2)}s`; }
+    async function runBenchmark() {
+      const button = $("runBenchmark"); button.disabled = true; $("benchmarkResults").textContent = "Benchmark running sequentially...";
+      try {
+        const response = await fetch("/api/benchmark", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ scenario_id:$("benchmarkScenario").value, repetitions:Number($("benchmarkRuns").value), delay_seconds:Number($("benchmarkDelay").value) }) });
+        const data = await response.json(); if (!response.ok) throw new Error(data.detail || "Benchmark failed");
+        const summary = data.summary; const table = document.createElement("table");
+        table.innerHTML = "<thead><tr><th>Scenario</th><th>Runs</th><th>Success</th><th>Avg TTFT</th><th>Median TTFT</th><th>P95 TTFT</th><th>Avg total</th></tr></thead>";
+        const row = document.createElement("tr");
+        [data.scenario.name, summary.runs, `${(summary.success_rate * 100).toFixed(0)}%`, statCell(summary.ttft_seconds.mean), statCell(summary.ttft_seconds.median), statCell(summary.ttft_seconds.p95), statCell(summary.total_seconds.mean)].forEach((value) => { const cell=document.createElement("td"); cell.textContent=String(value); row.append(cell); });
+        const body=document.createElement("tbody"); body.append(row); table.append(body); $("benchmarkResults").replaceChildren(table);
+        const note=document.createElement("p"); note.className="small"; note.textContent=data.note; $("benchmarkResults").append(note); refreshHistory();
+      } catch (error) { $("benchmarkResults").textContent = error.message; }
+      finally { button.disabled=false; }
+    }
+    async function refreshHistory() {
+      const body=$("historyBody"); body.replaceChildren();
+      try {
+        const response=await fetch("/api/history?limit=100"); const data=await response.json();
+        for (const run of data.runs) { const row=document.createElement("tr"); const values=[new Date(run.created_at).toLocaleString(), run.scenario || "manual", `${run.source_lang} -> ${run.target_lang}`, run.session_display, seconds(run.ttft_seconds), seconds(run.total_seconds), run.status_code ?? "-", run.chunk_count, run.error_code || "-"]; values.forEach((value) => { const cell=document.createElement("td"); cell.textContent=String(value); row.append(cell); }); body.append(row); }
+        if (!data.runs.length) { const row=document.createElement("tr"); const cell=document.createElement("td"); cell.colSpan=9; cell.textContent="No local test runs yet."; row.append(cell); body.append(row); }
+      } catch (error) { const row=document.createElement("tr"); const cell=document.createElement("td"); cell.colSpan=9; cell.textContent=`Could not load history: ${error.message}`; row.append(cell); body.append(row); }
+    }
+    async function boot() {
+      $("generateSession").addEventListener("click", () => { $("sessionId").value=randomSession(); setStatus("Generated a fresh local test session.", "good"); });
+      $("send").addEventListener("click", () => streamRequest(requestPayload())); $("cancel").addEventListener("click", () => activeController?.abort());
+      $("scenario").addEventListener("change", showScenarioDetail); $("loadScenario").addEventListener("click", loadScenario); $("runScenario").addEventListener("click", runSelectedScenario);
+      $("runLanguage").addEventListener("click", runLanguageTest); $("runBenchmark").addEventListener("click", runBenchmark); $("refreshHistory").addEventListener("click", refreshHistory);
+      $("sessionId").value=randomSession();
+      const [configResponse, scenarioResponse] = await Promise.all([fetch("/api/config/status"), fetch("/api/scenarios")]); const config = await configResponse.json(); const scenarioData = await scenarioResponse.json();
+      scenarios=scenarioData.scenarios; populateScenarios(); const banner=$("configuration"); banner.textContent=config.voice_api_configured ? "VOICE_API_URL is configured locally. The upstream address is intentionally hidden from this dashboard." : "VOICE_API_URL is not configured. Copy .env.example to .env and add the private endpoint locally."; banner.className=config.voice_api_configured ? "notice" : "notice warning";
+      refreshHistory();
+    }
+    boot().catch((error) => { $("configuration").textContent=`Dashboard startup failed: ${error.message}`; $("configuration").className="notice warning"; });
+  </script>
+</body>
+</html>
